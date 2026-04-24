@@ -1,0 +1,60 @@
+name: Generate Proto Files
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout proto repo
+        uses: actions/checkout@v4
+      
+      - name: Install protoc
+        run: |
+          PROTOC_VERSION=25.1
+          curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip"
+          unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d /usr/local
+          
+      - name: Install Go plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          
+      - name: Generate Go code
+        run: |
+          mkdir -p generated
+          protoc --go_out=generated \
+                 --go_opt=paths=source_relative \
+                 --go-grpc_out=generated \
+                 --go-grpc_opt=paths=source_relative \
+                 payment/v1/*.proto
+                 
+      - name: Setup Git for generated repo
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          
+      - name: Clone generated repo
+        env:
+          GEN_REPO_TOKEN: ${{ secrets.GEN_REPO_TOKEN }}
+        run: |
+          git clone https://x-access-token:${GEN_REPO_TOKEN}@github.com/youruser/payment-generated-go.git gen-repo
+          cp -r generated/* gen-repo/
+          
+      - name: Push generated code
+        run: |
+          cd gen-repo
+          git add .
+          git commit -m "Generate proto files from ${GITHUB_SHA}" || echo "No changes"
+          git push origin main
+          
+      - name: Tag generated repo (if version tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd gen-repo
+          git tag ${{ github.ref_name }}
+          git push origin ${{ github.ref_name }}

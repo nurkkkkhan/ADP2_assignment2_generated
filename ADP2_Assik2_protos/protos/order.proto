@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package order.v1;
+
+option go_package = "github.com/nurkkkkhan/order-proto/gen/order/v1;orderv1";
+
+import "google/protobuf/timestamp.proto"; 
+
+service OrderTrackingService {
+    rpc SubscribeToOrderUpdates(OrderSubscriptionRequest) returns (stream OrderStatusUpdate);
+}
+
+message OrderSubscriptionRequest {
+    string order_id = 1;
+}
+
+message OrderStatusUpdate {
+    string order_id = 1;
+    string status = 2;
+    google.protobuf.Timestamp updated_at = 3;
+    OrderDetails details = 4;
+}
+
+message OrderDetails {
+    string customer_id = 1;
+    string item_name = 2;
+    int64 amount = 3;
+}
