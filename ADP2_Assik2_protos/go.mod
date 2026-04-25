@@ -1,3 +1,4 @@
+module github.com/nurkkkkhan/ADP2_assignment2_generated
 go 1.23
 
 require (
